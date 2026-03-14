@@ -1530,31 +1530,134 @@ const server = http.createServer((req, res) => {
   }
 
   if (req.url === '/api/auth/status') {
-    // TEMPORARILY BYPASSED FOR EMERGENCY - Always return logged in
+    // Return actual auth status
     const creds = getCredentials();
-    const registered = true;  // Force registered
-    const loggedIn = true;   // Force logged in
+    const registered = !!creds;
+    let loggedIn = false;
+    let username = null;
+    
+    const authHeader = req.headers.authorization;
+    if (authHeader && authHeader.startsWith('Bearer ')) {
+      const token = authHeader.substring(7);
+      const session = sessions.get(token);
+      if (session && session.expiresAt > Date.now()) {
+        loggedIn = true;
+        username = session.username;
+        session.lastActivity = Date.now();
+      }
+    }
+    
     setSameSiteCORS(req, res);
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ registered, loggedIn }));
+    res.end(JSON.stringify({ registered, loggedIn, username }));
     return;
   }
 
   if (req.url === '/api/auth/register' && req.method === 'POST') {
-    // REGISTRATION DISABLED - Auth bypassed for emergency access
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Registration is disabled' }));
+    // Handle registration
+    let body = '';
+    req.on('data', chunk => { body += chunk; if (body.length > 2048) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const { username, password } = JSON.parse(body);
+        
+        if (!username || !password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Username and password required' }));
+          return;
+        }
+
+        const pwdError = validatePassword(password);
+        if (pwdError) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: pwdError }));
+          return;
+        }
+
+        const existingCreds = getCredentials();
+        if (existingCreds) {
+          res.writeHead(409, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Account already registered' }));
+          return;
+        }
+
+        const { hash, salt } = hashPassword(password);
+        const creds = { username, passwordHash: hash, salt };
+        saveCredentials(creds);
+
+        const token = createSession(username, ip);
+        auditLog('register', ip, { username });
+        setSameSiteCORS(req, res);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, token }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid request' }));
+      }
+    });
     return;
   }
 
   if (req.url === '/api/auth/login' && req.method === 'POST') {
-    // LOGIN DISABLED - Auth bypassed for open access
-    res.writeHead(403, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'Login is disabled' }));
+    // Handle login
+    let body = '';
+    req.on('data', chunk => { body += chunk; if (body.length > 2048) req.destroy(); });
+    req.on('end', () => {
+      try {
+        const { username, password, rememberMe } = JSON.parse(body);
+        
+        if (!username || !password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Username and password required' }));
+          return;
+        }
+
+        const creds = getCredentials();
+        if (!creds) {
+          recordFailedAuth(ip);
+          auditLog('login_failed', ip, { username, reason: 'no_account' });
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid credentials' }));
+          return;
+        }
+
+        if (!verifyPassword(password, creds.passwordHash, creds.salt)) {
+          recordFailedAuth(ip);
+          auditLog('login_failed', ip, { username, reason: 'wrong_password' });
+          res.writeHead(401, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid credentials' }));
+          return;
+        }
+
+        if (creds.mfaEnabled) {
+          // Return partial success, require MFA
+          const tempToken = generateSessionToken();
+          sessions.set(tempToken, {
+            username: creds.username,
+            ip,
+            pendingMfa: true,
+            createdAt: Date.now(),
+            expiresAt: Date.now() + 300000 // 5 minutes
+          });
+          setSameSiteCORS(req, res);
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ mfaRequired: true, tempToken }));
+          return;
+        }
+
+        clearFailedAuth(ip);
+        const token = createSession(username, ip, rememberMe);
+        auditLog('login', ip, { username });
+        setSameSiteCORS(req, res);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true, token }));
+      } catch (e) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Invalid request' }));
+      }
+    });
     return;
   }
-
-  // Login handler removed - see git history for original code
 
   if (req.url === '/api/auth/logout' && req.method === 'POST') {
     const authHeader = req.headers.authorization;
