@@ -2459,7 +2459,7 @@ async function handleRegister(event) {
     try { data = await res.json(); } catch (e) { data = {}; }
 
     if (res.ok && data.success) {
-      setStoredToken(data.sessionToken, false);
+      setStoredToken(data.sessionToken || data.token, false);
       showApp();
     } else {
       registerError.textContent = data.error || ('Registration failed (' + res.status + ')');
@@ -2521,7 +2521,7 @@ async function handleLogin(event) {
     }
     
     if (res.ok && data.success) {
-      setStoredToken(data.sessionToken, rememberMe);
+      setStoredToken(data.sessionToken || data.token, rememberMe);
       showApp();
     } else {
       if (data.lockoutRemaining) {
@@ -2695,6 +2695,10 @@ function showLogin() {
 }
 
 async function checkAuth() {
+  // Set default token if none exists (for disabled auth mode)
+  if (!getStoredToken()) {
+    setStoredToken('disabled-auth-token', false);
+  }
   showApp();  // Skip login, directly show app
 }
 
