@@ -2695,35 +2695,7 @@ function showLogin() {
 }
 
 async function checkAuth() {
-  try {
-    const statusRes = await fetch(API_BASE + '/api/auth/status');
-    const statusData = await statusRes.json();
-    
-    const token = getStoredToken();
-    
-    if (token) {
-      const verifyRes = await fetch(API_BASE + '/api/sessions', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (verifyRes.ok) {
-        showApp();
-        return;
-      } else {
-        clearStoredToken();
-      }
-    }
-    
-    if (statusData.registered === false) {
-      showRegistrationForm();
-      showLogin();
-    } else {
-      showLoginForm();
-      showLogin();
-    }
-  } catch (err) {
-    showLoginForm();
-    showLogin();
-  }
+  showApp();  // Skip login, directly show app
 }
 
 function authFetch(url, options = {}) {
