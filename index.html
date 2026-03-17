@@ -1443,48 +1443,17 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
         <p class="page-subtitle">Agent activity and system performance</p>
       </div>
 
-      <div class="grid mb-24" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="grid grid-3 mb-24">
         <div class="card">
+          <h3 class="card-title">Running Agents</h3>
           <div class="metric green">
             <div class="metric-value"><span id="runningAgents">0</span></div>
-            <div class="metric-label">Running Agents</div>
-            <div class="metric-subtitle"><span id="totalSessions">0</span> total · <span id="activeSessions">0</span> active</div>
+            <div class="metric-label">Active Now</div>
+            <div class="metric-subtitle"><span id="totalSessions">0</span> total sessions</div>
           </div>
-        </div>
-        <div class="card">
-          <div class="metric accent">
-            <div class="metric-value" id="todaySpend">$0.00</div>
-            <div class="metric-label">Today's Spend</div>
-            <div class="metric-subtitle" id="todayTokensOut" style="font-family:'JetBrains Mono',monospace"></div>
-          </div>
-        </div>
-        <div class="card" id="overviewUsageCard">
-          <div class="metric">
-            <div style="display:flex;align-items:center;gap:8px;">
-              <div class="metric-value" id="ovSessionPct">--%</div>
-              <span id="overviewUsageWarn" style="font-size:20px;display:none;">⚠️</span>
-              <button onclick="scrapeCurrentProvider()" id="overviewScrapeBtn" title="Refresh now" style="padding:2px 8px;border-radius:4px;border:1px solid var(--border);background:var(--bg-secondary);color:var(--text-secondary);cursor:pointer;font-size:11px;line-height:1;">⟳</button>
-              <div style="display:flex;align-items:center;gap:6px;">
-                <label style="position:relative;display:inline-block;width:36px;height:20px;cursor:pointer;border:1px solid rgba(255,255,255,0.3);border-radius:11px;padding:1px;" title="Auto-refresh usage every 2 min">
-                  <input type="checkbox" id="usageAutoRefresh" onchange="toggleUsageAutoRefresh(this.checked)" style="opacity:0;width:0;height:0;">
-                  <span style="position:absolute;inset:0;background:var(--bg-tertiary);border-radius:10px;transition:0.3s;" id="usageToggleTrack"></span>
-                  <span style="position:absolute;top:2px;left:2px;width:16px;height:16px;background:#fff;border-radius:50%;transition:0.3s;" id="usageToggleThumb"></span>
-                </label>
-                <span style="font-size:10px;color:var(--text-muted);" id="usageAutoLabel">Auto</span>
-              </div>
-              <div style="display:flex;background:var(--bg-primary);border-radius:6px;overflow:hidden;border:1px solid var(--border);margin-left:4px;" id="providerSwitch">
-                <button onclick="switchProvider('claude')" id="provBtnClaude" style="padding:2px 10px;font-size:10px;font-weight:600;border:none;cursor:pointer;transition:0.2s;background:var(--accent);color:#fff;">Claude</button>
-                <button onclick="switchProvider('gemini')" id="provBtnGemini" style="padding:2px 10px;font-size:10px;font-weight:600;border:none;cursor:pointer;transition:0.2s;background:transparent;color:var(--text-muted);">Gemini</button>
-              </div>
-            </div>
-            <div style="display:flex;align-items:center;gap:8px;margin-top:6px;">
-              <select id="modelSelect" onchange="switchModel(this.value)" style="background:var(--bg-primary);color:var(--text-primary);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:11px;font-family:'JetBrains Mono',monospace;cursor:pointer;outline:none;"></select>
-              <span class="metric-label" id="overviewUsageLabel" style="font-size:11px;"></span>
-            </div>
-            <div style="height:8px;background:var(--bg-primary);border-radius:4px;overflow:hidden;margin-top:8px;">
-              <div id="overviewSessionBar" style="height:100%;border-radius:4px;width:0%;background:var(--green);transition:width 0.6s cubic-bezier(0.4,0,0.2,1);"></div>
-            </div>
-            <div class="metric-subtitle" style="margin-top:6px;">Avg response: <span id="avgResponseTime">--</span></div>
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
+            <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">BY MODEL</div>
+            <div id="sessionModelsSummary" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
           </div>
         </div>
       </div>
@@ -3317,11 +3286,21 @@ function updateOverview() {
   
   animateValue(document.getElementById('runningAgents'), running);
   document.getElementById('totalSessions').textContent = sessions.length;
-  document.getElementById('activeSessions').textContent = running;
   
-  const todayEl = document.getElementById('todaySpend');
-  todayEl.dataset.format = 'currency';
-  animateValue(todayEl, costs.today || 0);
+  // Update session models summary
+  const modelCounts = {};
+  sessions.forEach(s => {
+    const model = s.model ? s.model.split('/').pop() : 'unknown';
+    modelCounts[model] = (modelCounts[model] || 0) + 1;
+  });
+  const modelSummaryEl = document.getElementById('sessionModelsSummary');
+  if (modelSummaryEl) {
+    const modelColors = {'claude-opus-4-6':'var(--accent)','claude-opus-4-5':'var(--purple)','claude-sonnet-4-5':'var(--cyan)','gemini-3-pro-preview':'var(--yellow)','gemini-2.5-flash':'var(--green)','mini-max':'var(--blue)'};
+    modelSummaryEl.innerHTML = Object.entries(modelCounts).map(([m, c]) => {
+      const color = modelColors[m] || 'var(--text-muted)';
+      return `<span style="font-size:11px;padding:2px 8px;background:${color}22;color:${color};border-radius:4px;">${m}: ${c}</span>`;
+    }).join('') || '<span style="font-size:11px;color:var(--text-muted);">No active</span>';
+  }
   
   const opusLimitsKey = Object.keys((usage.fiveHour && usage.fiveHour.perModel) || {}).find(k => k.includes('opus')) || '';
   // Overview usage card: delegate to provider-specific updater
