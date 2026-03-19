@@ -1443,7 +1443,7 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
         <p class="page-subtitle">Agent activity and system performance</p>
       </div>
 
-      <div class="grid grid-3 mb-24">
+      <div class="grid grid-2 mb-24">
         <div class="card">
           <h3 class="card-title">Running Agents</h3>
           <div class="metric green">
@@ -1454,6 +1454,17 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
           <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border);">
             <div style="font-size:11px;color:var(--text-muted);margin-bottom:8px;">BY MODEL</div>
             <div id="sessionModelsSummary" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="card-title">Lifetime Stats</h3>
+          <div id="lifetimeStats" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
+            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Tokens</div><div class="mono" style="font-size:20px;font-weight:700;" id="ltTokens">--</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Messages</div><div class="mono" style="font-size:20px;font-weight:700;" id="ltMessages">--</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Cost</div><div class="mono" style="font-size:20px;font-weight:700;color:var(--accent);" id="ltCost">--</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Sessions</div><div class="mono" style="font-size:20px;font-weight:700;" id="ltSessions">--</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">First Session</div><div style="font-size:13px;font-weight:600;" id="ltFirstDate">--</div></div>
+            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Days Active</div><div style="font-size:20px;font-weight:700;color:var(--green);" id="ltDaysActive">--</div></div>
           </div>
         </div>
       </div>
@@ -1541,7 +1552,7 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
       <div class="grid grid-2 mb-24">
         <div class="card">
           <h3 class="card-title">Services Status</h3>
-          <div id="servicesStatus"></div>
+          <div id="servicesStatus" style="max-height:320px;overflow-y:auto;"></div>
         </div>
         <div class="card">
           <h3 class="card-title">Cron Jobs</h3>
@@ -1568,76 +1579,20 @@ body.light-theme ::selection { background: rgba(99,102,241,0.2); }
           </div>
         </div>
         <div class="card">
-          <h3 class="card-title">Tailscale Status</h3>
-          <div id="tailscaleStatus" style="display:flex;flex-direction:column;gap:12px;">
-            <div style="font-size:13px;color:var(--text-muted);">Loading...</div>
-          </div>
+          <h3 class="card-title">Memory Files</h3>
+          <div id="memoryFiles" style="max-height:320px;overflow-y:auto;"></div>
         </div>
       </div>
 
       <div class="grid grid-2 mb-24">
-        <div class="card">
-          <h3 class="card-title">Lifetime Stats</h3>
-          <div id="lifetimeStats" style="display:grid;grid-template-columns:repeat(2,1fr);gap:16px;">
-            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Tokens</div><div class="mono" style="font-size:20px;font-weight:700;" id="ltTokens">--</div></div>
-            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Messages</div><div class="mono" style="font-size:20px;font-weight:700;" id="ltMessages">--</div></div>
-            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Cost</div><div class="mono" style="font-size:20px;font-weight:700;color:var(--accent);" id="ltCost">--</div></div>
-            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Total Sessions</div><div class="mono" style="font-size:20px;font-weight:700;" id="ltSessions">--</div></div>
-            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">First Session</div><div style="font-size:13px;font-weight:600;" id="ltFirstDate">--</div></div>
-            <div><div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;">Days Active</div><div style="font-size:20px;font-weight:700;color:var(--green);" id="ltDaysActive">--</div></div>
-          </div>
+        <div class="card" style="display:flex;flex-direction:column;">
+          <h3 class="card-title">Git Activity (7 Days)</h3>
+          <div id="gitActivity" style="flex:1;min-height:400px;overflow-y:auto;"></div>
         </div>
-        <div class="card">
-          <h3 class="card-title">Activity Streak</h3>
-          <div style="display:flex;align-items:center;gap:24px;">
-            <div style="text-align:center;">
-              <div style="font-size:48px;margin-bottom:8px;">🔥</div>
-              <div style="font-size:36px;font-weight:700;font-family:'JetBrains Mono',monospace;color:var(--accent);" id="currentStreak">0</div>
-              <div style="font-size:12px;color:var(--text-muted);text-transform:uppercase;">Current Streak</div>
-            </div>
-            <div style="flex:1;">
-              <div style="margin-bottom:12px;">
-                <div style="font-size:11px;color:var(--text-muted);margin-bottom:4px;">Longest Streak</div>
-                <div style="font-size:24px;font-weight:700;font-family:'JetBrains Mono',monospace;" id="longestStreak">0</div>
-              </div>
-              <div style="font-size:10px;color:var(--text-muted);margin-bottom:8px;">Last 30 Days</div>
-              <div id="streakCalendar" style="display:grid;grid-template-columns:repeat(10,1fr);gap:3px;"></div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="grid grid-2 mb-24" style="align-items:start;">
-        <div class="card">
+        <div class="card" style="display:flex;flex-direction:column;">
           <h3 class="card-title">Recent Activity</h3>
-          <div class="activity-feed" id="recentActivity" style="max-height:400px;overflow-y:auto;"></div>
+          <div class="activity-feed" id="recentActivity" style="flex:1;min-height:400px;overflow-y:auto;"></div>
           <a href="#" class="view-all-link" data-page="sessions">View All Sessions →</a>
-        </div>
-        <div>
-          <div class="card mb-24">
-            <h3 class="card-title">Daily Spend (Last 7 Days)</h3>
-            <div class="bar-chart" id="dailySpendChart"></div>
-          </div>
-          <div class="card">
-            <h3 class="card-title">Memory Files</h3>
-            <div id="memoryFiles"></div>
-          </div>
-        </div>
-      </div>
-
-      <div class="card mb-24">
-        <h3 class="card-title">Git Activity (7 Days)</h3>
-        <div id="gitActivity" style="max-height:320px;overflow-y:auto;"></div>
-      </div>
-
-      <div class="grid grid-2 mb-24">
-        <div class="card">
-          <h3 class="card-title">Today's Token Breakdown by Model</h3>
-          <div id="tokenBreakdown"></div>
-        </div>
-        <div class="card">
-          <h3 class="card-title">Session Models</h3>
-          <div id="sessionModels"></div>
         </div>
       </div>
     </div>
@@ -3432,24 +3387,6 @@ function updateOverview() {
   const days = Object.keys(perDay).sort().slice(-7);
   const maxSpend = Math.max(...days.map(d => perDay[d] || 0), 0.01);
   
-  const chartHeight = 120;
-  const chartHtml = days.map(day => {
-    const amount = perDay[day] || 0;
-    const h = Math.max(4, (amount / maxSpend) * chartHeight);
-    const date = new Date(day);
-    const label = date.toLocaleDateString('en', { month: 'short', day: 'numeric' });
-    
-    return `
-      <div class="bar-item">
-        <div class="bar-value">$${amount.toFixed(2)}</div>
-        <div class="bar" style="height: ${h}px"></div>
-        <div class="bar-label">${label}</div>
-      </div>
-    `;
-  }).join('');
-  
-  document.getElementById('dailySpendChart').innerHTML = chartHtml || 
-    '<div class="empty-state-text">No data</div>';
 }
 
 let sessionFilter = 'all';
@@ -5195,77 +5132,6 @@ async function fetchLifetimeStats() {
   } catch {}
 }
 
-// Activity Streak
-function calculateStreak() {
-  try {
-    const perDay = costs.perDay || {};
-    const days = Object.keys(perDay).sort();
-    
-    // Calculate current streak
-    let currentStreak = 0;
-    const today = new Date().toISOString().substring(0, 10);
-    let checkDate = new Date();
-    
-    while (true) {
-      const dateStr = checkDate.toISOString().substring(0, 10);
-      if (perDay[dateStr] && perDay[dateStr] > 0) {
-        currentStreak++;
-      } else if (dateStr !== today) {
-        break;
-      }
-      checkDate.setDate(checkDate.getDate() - 1);
-      if (currentStreak > 365) break;
-    }
-    
-    // Calculate longest streak
-    let longestStreak = 0;
-    let tempStreak = 0;
-    let prevDate = null;
-    
-    for (const day of days) {
-      if (perDay[day] > 0) {
-        if (!prevDate) {
-          tempStreak = 1;
-        } else {
-          const diff = (new Date(day) - new Date(prevDate)) / 86400000;
-          if (diff === 1) {
-            tempStreak++;
-          } else {
-            longestStreak = Math.max(longestStreak, tempStreak);
-            tempStreak = 1;
-          }
-        }
-        prevDate = day;
-      }
-    }
-    longestStreak = Math.max(longestStreak, tempStreak);
-    
-    document.getElementById('currentStreak').textContent = currentStreak;
-    document.getElementById('longestStreak').textContent = longestStreak;
-    
-    // Render 30-day calendar
-    const calendarEl = document.getElementById('streakCalendar');
-    if (calendarEl) {
-      const last30Days = [];
-      for (let i = 29; i >= 0; i--) {
-        const d = new Date();
-        d.setDate(d.getDate() - i);
-        const dateStr = d.toISOString().substring(0, 10);
-        const active = perDay[dateStr] && perDay[dateStr] > 0;
-        last30Days.push({ date: dateStr, active });
-      }
-      
-      calendarEl.innerHTML = last30Days.map(d => {
-        const color = d.active ? 'var(--green)' : 'var(--bg-tertiary)';
-        const opacity = d.active ? '1' : '0.3';
-        return `<div style="width:100%;aspect-ratio:1;background:${color};opacity:${opacity};border-radius:3px;" title="${d.date}"></div>`;
-      }).join('');
-    }
-  } catch (e) {
-    console.error('Streak calculation error:', e);
-  }
-}
-
 // Logs Viewer
 let logAutoRefreshInterval = null;
 
@@ -5402,11 +5268,9 @@ fetchLifetimeStats();
 setInterval(fetchTailscaleStatus, 30000);
 setInterval(fetchLifetimeStats, 60000);
 setInterval(updatePageTitle, 5000);
-setInterval(() => { if (costs.perDay) calculateStreak(); }, 10000);
 
 // Initial calls
 setTimeout(() => {
-  if (costs.perDay) calculateStreak();
   updatePageTitle();
 }, 2000);
 

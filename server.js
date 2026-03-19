@@ -104,7 +104,7 @@ function loadModelPricing() {
 
 const MODEL_PRICING = loadModelPricing();
 
-function estimateMsgCost(msg) {
+function estimateMsgCost(msg, estimatedInput = null, estimatedOutput = null) {
   const usage = msg && msg.usage ? msg.usage : {};
   const explicit = toNum(usage.cost && usage.cost.total);
   if (explicit > 0) return explicit;
@@ -112,8 +112,10 @@ function estimateMsgCost(msg) {
   const modelNorm = normalizeModel(provider, msg && msg.model);
   const rates = MODEL_PRICING[`${provider}/${modelNorm}`];
   if (!rates) return 0;
-  const input = Math.max(0, toNum(usage.input)) / 1_000_000;
-  const output = Math.max(0, toNum(usage.output)) / 1_000_000;
+  
+  // Use estimated values if provided, otherwise use usage from msg
+  const input = (estimatedInput !== null ? estimatedInput : Math.max(0, toNum(usage.input))) / 1_000_000;
+  const output = (estimatedOutput !== null ? estimatedOutput : Math.max(0, toNum(usage.output))) / 1_000_000;
   const cacheRead = Math.max(0, toNum(usage.cacheRead)) / 1_000_000;
   const cacheWrite = Math.max(0, toNum(usage.cacheWrite)) / 1_000_000;
   return (
@@ -673,6 +675,14 @@ function getUsageWindows() {
     const perModelWeek = {};
     const recentMessages = [];
 
+    // Token estimation rates (chars -> tokens approximation)
+    const ESTIMATE_RATES = {
+      'input': 0.25,      // ~4 chars per token
+      'output': 0.25,     // ~4 chars per token
+      'cacheRead': 0.1,   // cache is more efficient
+      'cacheWrite': 0.1
+    };
+
     for (const file of files) {
       const lines = fs.readFileSync(path.join(sessDir, file), 'utf8').split('\n');
       for (const line of lines) {
@@ -681,17 +691,34 @@ function getUsageWindows() {
           const d = JSON.parse(line);
           if (d.type !== 'message') continue;
           const msg = d.message;
-          if (!msg || !msg.usage) continue;
+          if (!msg) continue;
           const ts = d.timestamp ? new Date(d.timestamp).getTime() : 0;
           if (!ts) continue;
           const provider = normalizeProvider(msg.provider);
           const model = normalizeModel(provider, msg.model);
           const modelKey = `${provider}/${model}`;
-          const inTok = Math.max(0, toNum(msg.usage.input));
-          const outTok = Math.max(0, toNum(msg.usage.output));
-          const cacheReadTok = Math.max(0, toNum(msg.usage.cacheRead));
-          const cacheWriteTok = Math.max(0, toNum(msg.usage.cacheWrite));
-          const cost = estimateMsgCost(msg);
+          
+          // Get actual usage or estimate from content
+          let inTok = 0, outTok = 0, cacheReadTok = 0, cacheWriteTok = 0;
+          if (msg.usage) {
+            inTok = Math.max(0, toNum(msg.usage.input));
+            outTok = Math.max(0, toNum(msg.usage.output));
+            cacheReadTok = Math.max(0, toNum(msg.usage.cacheRead));
+            cacheWriteTok = Math.max(0, toNum(msg.usage.cacheWrite));
+          } else if (msg.content) {
+            // Estimate from message content
+            const content = Array.isArray(msg.content) 
+              ? msg.content.map(c => c.text || '').join('')
+              : (typeof msg.content === 'string' ? msg.content : '');
+            const charCount = content.length;
+            inTok = Math.round(charCount * ESTIMATE_RATES.input);
+            // Assume assistant messages have some output
+            if (msg.role === 'assistant' && charCount > 0) {
+              outTok = Math.round(charCount * ESTIMATE_RATES.output);
+            }
+          }
+          
+          const cost = estimateMsgCost(msg, inTok, outTok);
 
           if (now - ts < fiveHoursMs) {
             if (!perModel5h[modelKey]) perModel5h[modelKey] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, cost: 0, calls: 0 };
